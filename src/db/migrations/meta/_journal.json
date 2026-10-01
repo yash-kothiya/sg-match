@@ -8,6 +8,20 @@
       "when": 1790791592220,
       "tag": "0000_fine_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790878006151,
+      "tag": "0001_nice_tinkerer",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790878354501,
+      "tag": "0002_redundant_fenris",
+      "breakpoints": true
     }
   ]
 }

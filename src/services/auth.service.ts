@@ -2,14 +2,25 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
-import { SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/config/constants";
+import { ROUTES, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/config/constants";
 import { env } from "@/config/env";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, type User } from "@/db/schema";
 import { ApiError } from "@/lib/api/errors";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import type { AuthUser } from "@/schemas/auth";
+
+export function toAuthUser(user: User): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    onboarded: user.onboardedAt !== null,
+  };
+}
 
 /** Exchanges a fresh Firebase ID token for an httpOnly session cookie. */
 export async function createSession(idToken: string) {
@@ -41,7 +52,7 @@ export async function ensureUserProfile(input: {
   const [user] = await db.select().from(users).where(eq(users.firebaseUid, input.firebaseUid));
   if (!user) throw new ApiError(500, "Could not load user profile");
 
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  return toAuthUser(user);
 }
 
 /** Verifies the session cookie and returns the SQL user, or null if signed out. Memoized per request. */
@@ -54,11 +65,18 @@ export const getSessionUser = cache(async (): Promise<AuthUser | null> => {
     const [user] = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
     if (!user) return null;
 
-    return { id: user.id, email: user.email, name: user.name, role: user.role };
+    return toAuthUser(user);
   } catch {
     return null;
   }
 });
+
+/** For server components and layouts: redirects to the sign-in page unless authenticated. */
+export async function requireSessionUser(): Promise<AuthUser> {
+  const user = await getSessionUser();
+  if (!user) redirect(ROUTES.auth);
+  return user;
+}
 
 /** For route handlers: throws 401 unless the caller is authenticated. */
 export async function requireUser(): Promise<AuthUser> {

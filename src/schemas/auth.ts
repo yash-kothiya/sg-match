@@ -48,4 +48,5 @@ export type AuthUser = {
   email: string;
   name: string;
   role: "student" | "admin";
+  onboarded: boolean;
 };

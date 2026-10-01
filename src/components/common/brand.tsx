@@ -12,7 +12,7 @@ export function BrandMark({ inverted, className }: { inverted?: boolean; classNa
       <span
         className={cn(
           "absolute right-0 size-6 rounded-full",
-          inverted ? "bg-primary-foreground/50" : "bg-primary/40 mix-blend-multiply",
+          inverted ? "bg-sidebar-primary" : "bg-primary/40 mix-blend-multiply",
         )}
       />
     </span>

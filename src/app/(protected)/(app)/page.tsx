@@ -1,13 +1,13 @@
 import { SparklesIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireSessionUser } from "@/services/auth.service";
 
 export const metadata = { title: "Dashboard · SG Match" };
 
 export default async function DashboardPage() {
-  // The (app) layout already guarantees a user; this call is memoized per request.
-  const user = (await getSessionUser())!;
+  // Memoized per request, so this doesn't repeat the layout's session check.
+  const user = await requireSessionUser();
 
   return (
     <>

@@ -1,7 +1,7 @@
 import { handleRoute, parseJson } from "@/lib/api/errors";
 import { getAdminAuth } from "@/lib/firebase/admin";
-import { signInWithPassword } from "@/lib/firebase/identity-toolkit";
-import { createSession, ensureUserProfile } from "@/lib/auth/session";
+import { signInWithPassword } from "@/services/identity-toolkit.service";
+import { createSession, ensureUserProfile } from "@/services/auth.service";
 import { signInSchema } from "@/schemas/auth";
 
 export const POST = handleRoute(async (request) => {

@@ -1,6 +1,11 @@
 "use client";
 
-import { LayoutDashboardIcon, MessagesSquareIcon, SparklesIcon, UsersIcon } from "lucide-react";
+import {
+  LayoutDashboardIcon,
+  MessagesSquareIcon,
+  SparklesIcon,
+  UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brand } from "@/components/common/brand";
@@ -10,13 +15,13 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { APP_NAV } from "@/config/constants";
 import { cn } from "@/lib/utils";
@@ -42,11 +47,13 @@ export function AppSidebar({ user }: { user: AuthUser }) {
 
   return (
     <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader>
+      {/* Collapsed to icons there is no room for the logo, so the toggle takes its place. */}
+      <SidebarHeader className="flex-row items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
         <Brand
           inverted
-          className="px-2 text-sidebar-foreground group-data-[collapsible=icon]:[&_span.font-heading]:hidden"
+          className="px-2 text-sidebar-foreground group-data-[collapsible=icon]:hidden"
         />
+        <SidebarTrigger className="text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground" />
       </SidebarHeader>
 
       <SidebarContent>

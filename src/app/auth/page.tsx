@@ -3,7 +3,7 @@ import { ROUTES } from "@/config/constants";
 import { SignIn } from "@/components/auth/sign-in";
 import { SignUp } from "@/components/auth/sign-up";
 import { Brand } from "@/components/common/brand";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser } from "@/services/auth.service";
 
 export const metadata = { title: "Sign in · SG Match" };
 
@@ -20,7 +20,7 @@ export default async function AuthPage(props: PageProps<"/auth">) {
 
   return (
     <main className="grid flex-1 lg:grid-cols-[1.05fr_1fr]">
-      <section className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
+      <section className="relative hidden overflow-hidden bg-linear-to-br from-sidebar via-sidebar to-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
         {/* Overlapping circles echo the brand mark: people converging into a group. */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className="absolute -top-24 -right-16 size-96 rounded-full bg-white/10" />

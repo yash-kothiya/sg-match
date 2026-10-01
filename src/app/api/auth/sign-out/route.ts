@@ -1,7 +1,7 @@
 import { handleRoute } from "@/lib/api/errors";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { SESSION_COOKIE } from "@/config/constants";
-import { clearSession } from "@/lib/auth/session";
+import { clearSession } from "@/services/auth.service";
 import { cookies } from "next/headers";
 
 export const POST = handleRoute(async () => {

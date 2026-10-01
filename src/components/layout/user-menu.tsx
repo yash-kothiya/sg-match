@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react";
+import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { ROUTES } from "@/config/constants";
 import { useSignOut } from "@/hooks/auth";
 import type { AuthUser } from "@/schemas/auth";
 
@@ -61,6 +63,12 @@ export function UserMenu({ user }: { user: AuthUser }) {
             sideOffset={8}
             className="w-56 rounded-xl"
           >
+            <DropdownMenuItem asChild>
+              <Link href={ROUTES.profile}>
+                <UserIcon />
+                Profile
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
               disabled={signOut.isPending}

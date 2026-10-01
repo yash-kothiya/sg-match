@@ -7,6 +7,8 @@ export const ROUTES = {
   auth: "/auth",
   signIn: "/auth?mode=sign-in",
   signUp: "/auth?mode=sign-up",
+  onboarding: "/onboarding",
+  profile: "/profile",
 } as const;
 
 // Sidebar navigation. `href: null` marks a feature that isn't built yet (shown disabled).
@@ -27,6 +29,11 @@ export const API_ENDPOINTS = {
     signUp: "/auth/sign-up",
     signOut: "/auth/sign-out",
   },
+  profile: {
+    me: "/profile",
+    onboarding: "/profile/onboarding",
+  },
+  skills: "/skills",
 } as const;
 
 export const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again.";
@@ -68,3 +75,50 @@ export const FIREBASE_AUTH_ERRORS: Record<
     field: "password",
   },
 };
+
+// Onboarding wizard
+
+// Keep these values in sync with the pg enums in src/db/schema/enums (that module can't be
+// imported client-side).
+export const EXPERIENCE_LEVELS = [
+  { value: "beginner", label: "Beginner", description: "Just getting started with the subject" },
+  { value: "intermediate", label: "Intermediate", description: "Comfortable with the basics" },
+  { value: "advanced", label: "Advanced", description: "Strong grasp, happy to help others" },
+] as const;
+
+export const STUDY_MODES = [
+  { value: "online", label: "Online", description: "Video calls and shared docs" },
+  { value: "in_person", label: "In person", description: "Meet on campus or nearby" },
+  { value: "hybrid", label: "Hybrid", description: "A mix of both" },
+] as const;
+
+export const AVAILABILITY_OPTIONS = [
+  { value: "weekday_morning", label: "Weekday mornings" },
+  { value: "weekday_afternoon", label: "Weekday afternoons" },
+  { value: "weekday_evening", label: "Weekday evenings" },
+  { value: "weekend_morning", label: "Weekend mornings" },
+  { value: "weekend_afternoon", label: "Weekend afternoons" },
+  { value: "weekend_evening", label: "Weekend evenings" },
+] as const;
+
+export const INTEREST_SUGGESTIONS = [
+  "Algorithms",
+  "Web development",
+  "Data science",
+  "Machine learning",
+  "Databases",
+  "Mathematics",
+  "Statistics",
+  "Cybersecurity",
+] as const;
+
+export const ONBOARDING_STEPS = [
+  { title: "About you", description: "Where you study and a line about yourself." },
+  { title: "How you study", description: "Your level and how you like to meet." },
+  { title: "Your skills", description: "What you already know. More skills mean better matches." },
+  { title: "Time and topics", description: "When you're free and what you want to learn." },
+] as const;
+
+export const BIO_MAX_LENGTH = 280;
+export const MAX_INTERESTS = 10;
+export const MAX_SKILLS = 15;
