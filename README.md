@@ -1,5 +1,26 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## PostgreSQL and Drizzle
+
+Database code is organized like this:
+
+```text
+drizzle/                 Generated SQL migrations
+src/config/env.ts        Central environment loading and validation
+src/db/
+	index.ts               Server-only database client
+	schema.ts              Drizzle table definitions
+drizzle.config.ts        Drizzle Kit configuration
+compose.yaml             Local PostgreSQL service
+```
+
+1. Copy `.env.example` to `.env`.
+2. Start PostgreSQL with `docker compose up -d`.
+3. Generate a migration with `bun run db:generate`.
+4. Apply migrations with `bun run db:migrate`.
+
+Use `bun run db:push` to quickly sync schema changes during local prototyping. Import `db` from `@/db` in server-side code only. Never expose `DATABASE_URL` to client code.
+
 ## Getting Started
 
 First, run the development server:
