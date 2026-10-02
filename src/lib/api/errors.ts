@@ -17,12 +17,12 @@ export type ApiErrorBody = {
 };
 
 /** Wraps a route handler so thrown errors become consistent JSON responses. */
-export function handleRoute(
-  handler: (request: Request) => Promise<Response>,
-): (request: Request) => Promise<Response> {
-  return async (request) => {
+export function handleRoute<Ctx = unknown>(
+  handler: (request: Request, ctx: Ctx) => Promise<Response>,
+): (request: Request, ctx: Ctx) => Promise<Response> {
+  return async (request, ctx) => {
     try {
-      return await handler(request);
+      return await handler(request, ctx);
     } catch (error) {
       if (error instanceof ApiError) {
         return errorResponse(error.status, error.message, error.fieldErrors);

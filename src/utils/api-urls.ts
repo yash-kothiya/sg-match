@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from "@/config/constants";
 import type { AuthUser, SignInInput, SignUpRequest } from "@/schemas/auth";
-import type { OnboardingInput, Profile, ProfileInput, SkillOption } from "@/schemas/profile";
+import type { MatchesResponse, RequestSummary } from "@/schemas/matching";
+import type { OnboardingInput, Profile, ProfileInput, SkillOption, StudyRequestInput } from "@/schemas/profile";
 import { axiosClient } from "./axios-client";
 
 type UserResponse = { user: AuthUser };
@@ -35,4 +36,26 @@ export const skillsApi = {
     axiosClient
       .get<{ skills: SkillOption[] }>(API_ENDPOINTS.skills, { signal })
       .then((res) => res.data.skills),
+};
+
+export const matchesApi = {
+  requests: (signal?: AbortSignal) =>
+    axiosClient
+      .get<{ requests: RequestSummary[] }>(API_ENDPOINTS.requests, { signal })
+      .then((res) => res.data.requests),
+  createRequest: (input: StudyRequestInput) =>
+    axiosClient.post<{ id: string }>(API_ENDPOINTS.requests, input).then((res) => res.data.id),
+  deleteRequest: (requestId: string) =>
+    axiosClient.delete<{ ok: true }>(API_ENDPOINTS.request(requestId)).then((res) => res.data),
+  forRequest: (requestId: string, limit: number, signal?: AbortSignal) =>
+    axiosClient
+      .get<MatchesResponse>(API_ENDPOINTS.matches, { params: { requestId, limit }, signal })
+      .then((res) => res.data),
+};
+
+export const groupsApi = {
+  join: (groupId: string) =>
+    axiosClient.post<{ status: "pending" }>(API_ENDPOINTS.groupJoin(groupId)).then((res) => res.data),
+  cancelJoin: (groupId: string) =>
+    axiosClient.delete<{ status: "none" }>(API_ENDPOINTS.groupJoin(groupId)).then((res) => res.data),
 };

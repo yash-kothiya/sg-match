@@ -1,3 +1,5 @@
+import type { Confidence } from "@/lib/matching/types";
+
 /** App-wide constants. No secrets here (see env.ts), and safe to import from client or server. */
 
 export const APP_NAME = "SG Match";
@@ -9,12 +11,13 @@ export const ROUTES = {
   signUp: "/auth?mode=sign-up",
   onboarding: "/onboarding",
   profile: "/profile",
+  matches: "/matches",
 } as const;
 
 // Sidebar navigation. `href: null` marks a feature that isn't built yet (shown disabled).
 export const APP_NAV = [
   { key: "dashboard", title: "Dashboard", href: ROUTES.home },
-  { key: "matches", title: "Matches", href: null },
+  { key: "matches", title: "Matches", href: ROUTES.matches },
   { key: "groups", title: "Study groups", href: null },
   { key: "guide", title: "Study guide", href: null },
 ] as const;
@@ -34,6 +37,10 @@ export const API_ENDPOINTS = {
     onboarding: "/profile/onboarding",
   },
   skills: "/skills",
+  requests: "/requests",
+  request: (id: string) => `/requests/${encodeURIComponent(id)}`,
+  matches: "/matches",
+  groupJoin: (id: string) => `/groups/${encodeURIComponent(id)}/join`,
 } as const;
 
 export const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again.";
@@ -122,3 +129,25 @@ export const ONBOARDING_STEPS = [
 export const BIO_MAX_LENGTH = 280;
 export const MAX_INTERESTS = 10;
 export const MAX_SKILLS = 15;
+
+// Matching
+
+/**
+ * Study requests owned by these users are the shared demo dataset ("Dataset A"): every
+ * signed-in user can browse and match them. Keep in sync with `seedId("usr", ...)` in
+ * src/db/seeder/_helpers.ts.
+ */
+export const SAMPLE_USER_ID_PREFIX = "usr_seed_";
+/** Id of the built-in "match me from my profile" request. It is not stored; the server builds it. */
+export const PROFILE_REQUEST_ID = "profile";
+export const MAX_REQUESTS_PER_USER = 10;
+export const DEFAULT_MATCH_LIMIT = 5;
+export const MAX_MATCH_LIMIT = 10;
+
+/** Tailwind classes per match-confidence band, all from theme tokens. */
+export const CONFIDENCE_STYLES: Record<Confidence, { bar: string; chip: string; label: string }> = {
+  excellent: { bar: "bg-success", chip: "bg-success/12 text-success", label: "Excellent match" },
+  strong: { bar: "bg-primary", chip: "bg-primary/10 text-primary", label: "Strong match" },
+  fair: { bar: "bg-warning", chip: "bg-warning/15 text-warning-foreground", label: "Fair match" },
+  weak: { bar: "bg-muted-foreground", chip: "bg-muted text-muted-foreground", label: "Weak match" },
+};

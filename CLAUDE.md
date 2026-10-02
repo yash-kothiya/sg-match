@@ -18,6 +18,7 @@ A study-group matching app: students post study requests, create study groups, a
 bun run dev          # next dev
 bun run build        # next build
 bun run lint         # eslint
+bun run test         # bun test
 docker compose up -d # local Postgres (user/pass postgres/postgres, db sg_match, port 5432)
 bun run db:generate  # drizzle-kit generate (create migration from schema)
 bun run db:migrate   # apply migrations
@@ -26,7 +27,7 @@ bun run db:studio    # drizzle studio
 bun run db:seed <name>  # run src/db/seeder/<name>.ts: skills | users | groups | requests | all | unseed
 ```
 
-No test runner is configured.
+Tests: `bun run test` (bun's built-in runner; files named `*.test.ts`, currently `src/lib/matching/score.test.ts`).
 
 ## Environment
 
@@ -79,13 +80,23 @@ Enums (`src/db/schema/enums/index.ts`): `experience_level`, `study_mode`, `membe
 - Array columns (`availability`, `interests`) are `text[]` with `notNull().default([])`.
 - Code style in `src/db`: double quotes, semicolons, 2-space indentation in schema/helper files (`src/db/index.ts` uses tabs; keep whatever the file already uses).
 
+## Matching
+
+Pure engine in `src/lib/matching/` (no DB or framework imports): `weights.ts` is the whole model (skills 35, topics 20, availability 15, level 10, mode 10, location 10; weights sum to 100 and a test asserts it), `score.ts` has `scoreGroup`, `isEligible` (drops full groups, the requester's own groups and groups they already belong to) and `rankGroups` (deterministic tie-breaks: score, skills, topics, name, id). Each result carries a score, a confidence band, 2-3 `reasons` and honest `caveats` (e.g. "Meets in person, but you prefer online"). `services/matches.service.ts` loads requests/groups from Postgres and calls the engine; `GET /api/requests` lists the profile request, the user's own requests, then the shared sample requests (owners with ids starting `usr_seed_`, see `SAMPLE_USER_ID_PREFIX`), `GET /api/matches?requestId=&limit=` returns the ranked groups and the method explainer. Types for responses are in `src/schemas/matching.ts`. The tests run the engine on the real seed data, including the golden case. To change scoring, edit `weights.ts` and the tests, nothing else.
+
+## Matches page (student's view)
+
+`/matches` (`(protected)/(app)/matches/page.tsx`, client UI in `src/components/matches/`) is written for the signed-in student, not for browsing other people's data. It opens on **"Based on my profile"** (`PROFILE_REQUEST_ID = "profile"`: a built-in request the server builds from the user's profile, not stored in the DB; see `profileRequest()` in `matches.service.ts`). Students can also create **their own requests** (`NewRequestDialog`, a centred dialog, prefilled from their profile, using the shared field groups from `profile-fields.tsx`; `POST /api/requests`, max `MAX_REQUESTS_PER_USER`; `DELETE /api/requests/[id]` only for your own, behind a `ConfirmDialog` from `components/common/confirm-dialog.tsx`; use it for any destructive action instead of `window.confirm`) and each gets its own ranked groups. The 12 seeded requests are demo data under a collapsed **"Try a sample"** section (`RequestSummary.kind` is `profile | mine | sample`). On each match card a student can **Request to join** (`POST /api/groups/[id]/join` creates a `pending` `group_memberships` row; idempotent; full groups and own groups are rejected with 409) or **Cancel** (`DELETE` sets `withdrawn`); results carry `group.joinStatus`. Server logic: `services/requests.service.ts`, `services/groups.service.ts`, `services/matches.service.ts`. Hooks: `hooks/matches/use-matches.ts` (`useCreateRequest`, `useDeleteRequest`, `useJoinGroup`). `handleRoute<Ctx>()` passes Next's route context so dynamic-param routes work.
+
+Layout: request on the left, matches on the right, both cards. Left: `request-list.tsx` (profile card pinned on top, "My requests" with a New request button and a delete icon per item, collapsed samples); under `lg` it collapses into the `RequestSelect` dropdown. On desktop the whole page is one screen tall (`lg:-m-5 lg:h-[calc(100svh-2.5rem)]`: the page cancels most of the shell's 2rem gutter, leaving 0.75rem, so 2.5rem = the inset margin plus that gutter top and bottom; this is the one page that deliberately breaks the "no outer padding of your own" rule) with no page scroll; the left panel and the right card scroll independently, and under `lg` it stacks and the page scrolls normally. Right: one full-height card (header with the title, counts, "How scoring works" and the format filter from `mode-filter.tsx`; a scrolling body) holding one lean card per match (`match-card.tsx`: score ring, rank and confidence, name, subject/level/format/location, the top two reasons plus one caveat, spots left, the join action in the card's top-right; the rest lives behind "Full breakdown") which opens `match-sheet.tsx`, a side panel on desktop / bottom sheet on phones. "How scoring works" opens a side sheet built from the engine's weights. It fetches the top `MAX_MATCH_LIMIT` (10) via `useMatches`; filtering is client-side and each card keeps its true rank. Confidence colours (`CONFIDENCE_STYLES`) are in `src/config/constants.ts`. Loading, empty, filtered-empty and error states are inline (hooks are `meta: { silent: true }`). `?request=<id>` selects a request.
+
 ## Seed data
 
 `src/db/seeder/` holds idempotent seeders (each exports `seed()`; `index.ts` is the runner). Data lives in `skills.ts` (37 skills) and `_data/{users,groups,requests}.ts`: 12 fictional users (they can't sign in), 28 study groups (Dataset B, 3 of them full) and 12 study requests (Dataset A). Seeded rows have deterministic ids (`usr_seed_01`, `grp_seed_01`, `req_seed_01`, `mem_seed_<grp>_<usr>`), so re-running updates in place and `bun run db:seed unseed` removes them. `bun run db:seed all` runs skills, users, groups, requests in order. **Golden case:** request R1 (Priya Nair, intermediate, online, evenings + weekend mornings, Algorithms / Data structures / Python) must rank group 01 "Algorithms Sprint" first; group 03 (in person) and group 02 (advanced, weekend-only, Java) are the decoys. When changing seed data, keep skill names identical to `skills.ts`.
 
 ## Services
 
-Server-side business logic lives in `src/services/` as `<domain>.service.ts` (server-only; they use the DB or call external APIs): `auth.service.ts` (session cookie, `getSessionUser` / `requireSessionUser` / `requireUser`, `ensureUserProfile`), `profile.service.ts` (`getProfile`, `saveProfile`), `skills.service.ts` (`listSkills`), `identity-toolkit.service.ts` (Firebase REST sign-in/up). Route handlers and server components stay thin and call services; put new queries and rules in a service, not in a route. `src/lib/` keeps framework helpers only (`api/errors.ts`, `firebase/admin.ts`, `utils.ts`).
+Server-side business logic lives in `src/services/` as `<domain>.service.ts` (server-only; they use the DB or call external APIs): `auth.service.ts` (session cookie, `getSessionUser` / `requireSessionUser` / `requireUser`, `ensureUserProfile`), `profile.service.ts` (`getProfile`, `saveProfile`), `skills.service.ts` (`listSkills`), `requests.service.ts` (`createRequest`, `deleteRequest`), `groups.service.ts` (`requestToJoin`, `cancelJoinRequest`), `matches.service.ts`, `identity-toolkit.service.ts` (Firebase REST sign-in/up). Route handlers and server components stay thin and call services; put new queries and rules in a service, not in a route. `src/lib/` keeps framework helpers only (`api/errors.ts`, `firebase/admin.ts`, `utils.ts`).
 
 ## Auth
 

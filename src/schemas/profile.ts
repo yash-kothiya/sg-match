@@ -11,7 +11,7 @@ import {
 const values = <T extends readonly { value: string }[]>(options: T) =>
   options.map((option) => option.value) as [T[number]["value"], ...T[number]["value"][]];
 
-const profileFields = z.object({
+export const profileFields = z.object({
     // Step 1
     university: z
       .string()
@@ -55,6 +55,17 @@ export const profileSchema = profileFields
   })
   .refine(locationRule, locationRuleOptions);
 
+/** A study request: what to find a group for, using the same preference fields as the profile. */
+export const studyRequestSchema = profileFields
+  .omit({ university: true, bio: true })
+  .extend({
+    title: z.string().trim().min(3, "Give your request a short title").max(100, "Keep the title under 100 characters"),
+    subject: z.string().trim().min(2, "What are you studying?").max(80, "That subject is too long"),
+    description: z.string().trim().max(400, "Keep it under 400 characters"),
+  })
+  .refine(locationRule, locationRuleOptions);
+
+export type StudyRequestInput = z.infer<typeof studyRequestSchema>;
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
 export type ProfileInput = z.infer<typeof profileSchema>;
 
