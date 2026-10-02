@@ -23,7 +23,7 @@ bun run db:generate  # drizzle-kit generate (create migration from schema)
 bun run db:migrate   # apply migrations
 bun run db:push      # push schema directly (dev only)
 bun run db:studio    # drizzle studio
-bun run db:seed <name>  # run src/db/seeder/<name>.ts, e.g. `bun run db:seed skills`
+bun run db:seed <name>  # run src/db/seeder/<name>.ts: skills | users | groups | requests | all | unseed
 ```
 
 No test runner is configured.
@@ -78,6 +78,10 @@ Enums (`src/db/schema/enums/index.ts`): `experience_level`, `study_mode`, `membe
 - Only import `db` from server code (`src/db/index.ts` imports `server-only`; importing it into a client component fails the build).
 - Array columns (`availability`, `interests`) are `text[]` with `notNull().default([])`.
 - Code style in `src/db`: double quotes, semicolons, 2-space indentation in schema/helper files (`src/db/index.ts` uses tabs; keep whatever the file already uses).
+
+## Seed data
+
+`src/db/seeder/` holds idempotent seeders (each exports `seed()`; `index.ts` is the runner). Data lives in `skills.ts` (37 skills) and `_data/{users,groups,requests}.ts`: 12 fictional users (they can't sign in), 28 study groups (Dataset B, 3 of them full) and 12 study requests (Dataset A). Seeded rows have deterministic ids (`usr_seed_01`, `grp_seed_01`, `req_seed_01`, `mem_seed_<grp>_<usr>`), so re-running updates in place and `bun run db:seed unseed` removes them. `bun run db:seed all` runs skills, users, groups, requests in order. **Golden case:** request R1 (Priya Nair, intermediate, online, evenings + weekend mornings, Algorithms / Data structures / Python) must rank group 01 "Algorithms Sprint" first; group 03 (in person) and group 02 (advanced, weekend-only, Java) are the decoys. When changing seed data, keep skill names identical to `skills.ts`.
 
 ## Services
 
