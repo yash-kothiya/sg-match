@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { skills, studyRequests, studyRequestSkills } from "@/db/schema";
 import { ApiError } from "@/lib/api/errors";
 import type { StudyRequestInput } from "@/schemas/profile";
+import { refreshRequestScores } from "./matches.service";
 
 /** Creates a study request owned by the user. Returns its id. */
 export async function createRequest(userId: string, input: StudyRequestInput): Promise<string> {
@@ -35,7 +36,7 @@ export async function createRequest(userId: string, input: StudyRequestInput): P
     return true;
   });
 
-  return db.transaction(async (tx) => {
+  const id = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(studyRequests)
       .values({
@@ -56,6 +57,11 @@ export async function createRequest(userId: string, input: StudyRequestInput): P
     }
     return row.id;
   });
+
+  // Score the new request against every group now, so its matches are ready to read.
+  // If this fails the request still exists; the Matches page scores it on first view.
+  await refreshRequestScores(id).catch((error) => console.error("Scoring new request failed:", error));
+  return id;
 }
 
 /** Deletes one of the user's own requests. Other people's (and sample) requests can't be deleted. */

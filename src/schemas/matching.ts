@@ -18,9 +18,11 @@ export type RequestSummary = {
   availability: string[];
   interests: string[];
   skills: string[];
-  /** `profile` is built from the user's profile, `mine` is one they created, `sample` is shared demo data. */
-  kind: "profile" | "mine" | "sample";
+  /** `mine` is one the user created, `sample` is shared demo data. */
+  kind: "mine" | "sample";
   ownerName: string | null;
+  /** Best stored score among groups that can still be recommended; null if none. */
+  topScore: number | null;
 };
 
 export type GroupSummary = {
@@ -57,5 +59,7 @@ export type MatchesResponse = {
   matches: MatchItem[];
   /** How many groups were scored (after removing full and own groups). */
   considered: number;
+  /** When these scores were last computed (null if there are no eligible groups). */
+  scoredAt: string | null;
   method: { key: string; label: string; weight: number; rule: string }[];
 };

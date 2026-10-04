@@ -229,26 +229,29 @@ export type RankOptions = { limit?: number };
  * Ranks eligible groups for a request, best first. Ties are broken the same way every time
  * (skills, then topics, then name, then id) so identical inputs always give identical output.
  */
+/**
+ * Best first. Ties are broken the same way every time (skills, then topics, then name, then id)
+ * so identical inputs always give identical output.
+ */
+export function sortResults(results: MatchResult[], names: Map<string, string>): MatchResult[] {
+  const ratio = (result: MatchResult, key: "skills" | "interests") => result.signals.find((s) => s.key === key)!.ratio;
+  return [...results].sort(
+    (a, b) =>
+      b.score - a.score ||
+      ratio(b, "skills") - ratio(a, "skills") ||
+      ratio(b, "interests") - ratio(a, "interests") ||
+      (names.get(a.groupId) ?? "").localeCompare(names.get(b.groupId) ?? "") ||
+      a.groupId.localeCompare(b.groupId),
+  );
+}
+
+/** Ranks eligible groups for a request, best first. */
 export function rankGroups(
   request: MatchRequestInput,
   groups: MatchGroupInput[],
   { limit = 5 }: RankOptions = {},
 ): MatchResult[] {
-  const skillsRatio = (result: MatchResult) => result.signals.find((s) => s.key === "skills")!.ratio;
-  const interestsRatio = (result: MatchResult) => result.signals.find((s) => s.key === "interests")!.ratio;
   const names = new Map(groups.map((group) => [group.id, group.name]));
-
-  return groups
-    .filter((group) => isEligible(request, group))
-    .map((group) => scoreGroup(request, group))
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        skillsRatio(b) - skillsRatio(a) ||
-        interestsRatio(b) - interestsRatio(a) ||
-        (names.get(a.groupId) ?? "").localeCompare(names.get(b.groupId) ?? "") ||
-        a.groupId.localeCompare(b.groupId),
-    )
-    .slice(0, limit);
+  const scored = groups.filter((group) => isEligible(request, group)).map((group) => scoreGroup(request, group));
+  return sortResults(scored, names).slice(0, limit);
 }
-

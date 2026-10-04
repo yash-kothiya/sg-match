@@ -5,6 +5,7 @@ import { MAX_OWNED_GROUPS } from "@/config/constants";
 import { db } from "@/db";
 import { groupMemberships, skills, studyGroups, studyGroupSkills, userSkills, users } from "@/db/schema";
 import { ApiError } from "@/lib/api/errors";
+import { refreshGroupScores } from "./matches.service";
 import type { GroupCardData, GroupDetail, GroupInput, GroupsQuery, MyStatus } from "@/schemas/groups";
 
 type GroupRow = typeof studyGroups.$inferSelect;
@@ -202,7 +203,7 @@ export async function createGroup(userId: string, input: GroupInput): Promise<st
   }
   const skillIds = await validateSkillIds(input.skillIds);
 
-  return db.transaction(async (tx) => {
+  const id = await db.transaction(async (tx) => {
     const [group] = await tx
       .insert(studyGroups)
       .values({
@@ -225,6 +226,8 @@ export async function createGroup(userId: string, input: GroupInput): Promise<st
     }
     return group.id;
   });
+  await refreshGroupScores(id).catch((error) => console.error("Scoring new group failed:", error));
+  return id;
 }
 
 export async function updateGroup(userId: string, groupId: string, input: GroupInput): Promise<void> {
@@ -261,6 +264,7 @@ export async function updateGroup(userId: string, groupId: string, input: GroupI
       await tx.insert(studyGroupSkills).values(skillIds.map((skillId) => ({ studyGroupId: groupId, skillId })));
     }
   });
+  await refreshGroupScores(groupId).catch((error) => console.error("Rescoring edited group failed:", error));
 }
 
 export async function deleteGroup(userId: string, groupId: string): Promise<void> {

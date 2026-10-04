@@ -145,8 +145,6 @@ export const MAX_SKILLS = 15;
  * src/db/seeder/_helpers.ts.
  */
 export const SAMPLE_USER_ID_PREFIX = "usr_seed_";
-/** Id of the built-in "match me from my profile" request. It is not stored; the server builds it. */
-export const PROFILE_REQUEST_ID = "profile";
 export const MAX_REQUESTS_PER_USER = 10;
 export const DEFAULT_MATCH_LIMIT = 5;
 export const MAX_MATCH_LIMIT = 10;

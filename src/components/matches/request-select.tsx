@@ -26,7 +26,6 @@ export function RequestSelect({
   selected: RequestSummary | null;
   onSelect: (id: string) => void;
 }) {
-  const profile = requests.filter((request) => request.kind === "profile");
   const mine = requests.filter((request) => request.kind === "mine");
   const samples = requests.filter((request) => request.kind === "sample");
 
@@ -83,8 +82,6 @@ export function RequestSelect({
           value={selected?.id ?? ""}
           onValueChange={onSelect}
         >
-          {items(profile)}
-          <DropdownMenuSeparator />
           {mine.length > 0 && (
             <>
               <DropdownMenuLabel>Your requests</DropdownMenuLabel>

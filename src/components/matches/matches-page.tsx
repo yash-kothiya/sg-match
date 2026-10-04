@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { PROFILE_REQUEST_ID } from "@/config/constants";
 import { useDeleteRequest, useJoinGroup, useMatches, useRequests } from "@/hooks/matches";
 import type { MatchItem, RequestSummary } from "@/schemas/matching";
 import type { Profile } from "@/schemas/profile";
@@ -19,6 +18,17 @@ import { Notice } from "./notice";
 import { RequestList } from "./request-list";
 import { RequestSelect } from "./request-select";
 import { ScoringExplainer } from "./scoring-explainer";
+
+/** "just now", "5 min ago", "2 h ago", "3 d ago" */
+function formatDistanceToNow(iso: string) {
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return `${Math.round(hours / 24)} d ago`;
+}
 
 function ResultsSkeleton() {
   return (
@@ -41,7 +51,10 @@ export function MatchesPage({
 }) {
   const requests = useRequests(initialRequests).data;
   const [selectedId, setSelectedId] = useState<string | null>(
-    initialRequests.find((request) => request.id === initialRequestId)?.id ?? PROFILE_REQUEST_ID,
+    // The one in the URL, else the student's own first request, else the first sample.
+    (initialRequests.find((request) => request.id === initialRequestId) ??
+      initialRequests.find((request) => request.kind === "mine") ??
+      initialRequests[0])?.id ?? null,
   );
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<RequestSummary | null>(null);
@@ -69,7 +82,11 @@ export function MatchesPage({
       onSuccess: () => {
         toast.success("Request deleted");
         setToDelete(null);
-        if (selectedId === request.id) choose(PROFILE_REQUEST_ID);
+        if (selectedId === request.id) {
+          const next = requests.find((other) => other.id !== request.id && other.kind === "mine") ?? requests.find((other) => other.kind === "sample");
+          if (next) choose(next.id);
+          else setSelectedId(null);
+        }
       },
     });
   };
@@ -114,7 +131,7 @@ export function MatchesPage({
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-heading text-xl font-semibold">
-                  {selected?.kind === "profile" ? "Groups that fit your profile" : <>Matches for &ldquo;{selected?.title}&rdquo;</>}
+                  {selected ? <>Matches for &ldquo;{selected.title}&rdquo;</> : "Matches"}
                 </h2>
                 <Button variant="outline" size="sm" onClick={() => setExplainerOpen(true)} disabled={!data}>
                   <InfoIcon aria-hidden />
@@ -124,6 +141,7 @@ export function MatchesPage({
               {data && (
                 <p className="-mt-2 flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
                   {visible.length} of the top {all.length} · {data.considered} open groups scored
+                  {data.scoredAt && <span title={new Date(data.scoredAt).toLocaleString()}> · saved {formatDistanceToNow(data.scoredAt)}</span>}
                   {query.isFetching && <LoaderCircleIcon className="size-4 animate-spin" aria-label="Updating" />}
                 </p>
               )}
@@ -132,7 +150,15 @@ export function MatchesPage({
 
             {/* Scrolling results, using the full width and the remaining height */}
             <div className="flex flex-1 flex-col gap-4 bg-muted/40 p-4 lg:min-h-0 lg:overflow-y-auto">
-              {query.isPending && selected ? (
+              {!selected ? (
+                <Notice
+                  icon={SearchXIcon}
+                  title="Create a request to see matches"
+                  action={<Button onClick={() => setCreating(true)}>New request</Button>}
+                >
+                  Tell us what you want to study. We score every group against it and save the results here.
+                </Notice>
+              ) : query.isPending ? (
                 <ResultsSkeleton />
               ) : query.isError ? (
                 <Notice
