@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EXPERIENCE_LEVELS, STUDY_MODES } from "@/config/constants";
 import { useProfile, useProfileForm } from "@/hooks/profile";
+import { profileStrength } from "@/lib/profile-strength";
 import type { Profile } from "@/schemas/profile";
 
 const SECTIONS = [
@@ -42,20 +43,6 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]!.toUpperCase())
     .join("");
-}
-
-/** What's still missing from the saved profile; drives the completeness card. */
-function completeness(profile: Profile) {
-  const checks = [
-    { label: "School or university", done: Boolean(profile.university) },
-    { label: "A short bio", done: Boolean(profile.bio) },
-    { label: "Study preferences", done: Boolean(profile.experienceLevel && profile.studyMode) },
-    { label: "At least one skill", done: profile.skills.length > 0 },
-    { label: "Availability", done: profile.availability.length > 0 },
-    { label: "Topics you want to study", done: profile.interests.length > 0 },
-  ];
-  const done = checks.filter((check) => check.done).length;
-  return { checks, percent: Math.round((done / checks.length) * 100) };
 }
 
 function SectionCard({
@@ -98,7 +85,7 @@ export function ProfilePage({ initialProfile }: { initialProfile: Profile }) {
 
   const level = EXPERIENCE_LEVELS.find((option) => option.value === profile.experienceLevel);
   const mode = STUDY_MODES.find((option) => option.value === profile.studyMode);
-  const { checks, percent } = completeness(profile);
+  const { checks, percent } = profileStrength(profile);
 
   return (
     <FormProvider {...form}>

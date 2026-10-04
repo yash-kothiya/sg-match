@@ -37,7 +37,7 @@ const NAV_ICONS = {
 
 // Roomier, higher-contrast nav rows. The active row is a solid light-lavender pill with dark text.
 const NAV_BUTTON =
-  "h-11 gap-3 rounded-xl px-3 text-[15px] font-medium text-sidebar-foreground/90 [&_svg]:size-5 " +
+  "h-11 gap-3 rounded-xl px-3 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:[&>span]:hidden text-[15px] font-medium text-sidebar-foreground/90 [&_svg]:size-5 " +
   "hover:bg-white/10 hover:text-sidebar-foreground " +
   "data-active:bg-sidebar-primary data-active:text-sidebar-primary-foreground data-active:shadow-sm " +
   "data-active:hover:bg-sidebar-primary data-active:hover:text-sidebar-primary-foreground";
