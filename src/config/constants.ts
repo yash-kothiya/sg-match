@@ -11,6 +11,8 @@ export const ROUTES = {
   signUp: "/auth?mode=sign-up",
   onboarding: "/onboarding",
   profile: "/profile",
+  groups: "/groups",
+  group: (id: string) => `/groups/${encodeURIComponent(id)}`,
   matches: "/matches",
 } as const;
 
@@ -18,7 +20,7 @@ export const ROUTES = {
 export const APP_NAV = [
   { key: "dashboard", title: "Dashboard", href: ROUTES.home },
   { key: "matches", title: "Matches", href: ROUTES.matches },
-  { key: "groups", title: "Study groups", href: null },
+  { key: "groups", title: "Study groups", href: ROUTES.groups },
   { key: "guide", title: "Study guide", href: null },
 ] as const;
 
@@ -40,7 +42,12 @@ export const API_ENDPOINTS = {
   requests: "/requests",
   request: (id: string) => `/requests/${encodeURIComponent(id)}`,
   matches: "/matches",
+  groups: "/groups",
+  group: (id: string) => `/groups/${encodeURIComponent(id)}`,
   groupJoin: (id: string) => `/groups/${encodeURIComponent(id)}/join`,
+  groupLeave: (id: string) => `/groups/${encodeURIComponent(id)}/leave`,
+  groupMember: (id: string, userId: string) =>
+    `/groups/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}`,
 } as const;
 
 export const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again.";
@@ -151,3 +158,9 @@ export const CONFIDENCE_STYLES: Record<Confidence, { bar: string; chip: string; 
   fair: { bar: "bg-warning", chip: "bg-warning/15 text-warning-foreground", label: "Fair match" },
   weak: { bar: "bg-muted-foreground", chip: "bg-muted text-muted-foreground", label: "Weak match" },
 };
+
+// Study groups
+export const MAX_OWNED_GROUPS = 5;
+export const MIN_GROUP_SIZE = 2;
+export const MAX_GROUP_SIZE = 20;
+export const DEFAULT_GROUP_SIZE = 6;

@@ -45,7 +45,11 @@ export function useDeleteRequest() {
 /** Ask to join a group, or withdraw that ask. Results carry the join status, so refetch them. */
 export function useJoinGroup() {
   const queryClient = useQueryClient();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.matchesAll });
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.matchesAll }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups }),
+    ]);
   return {
     join: useMutation({ mutationFn: groupsApi.join, onSuccess: refresh }),
     cancel: useMutation({ mutationFn: groupsApi.cancelJoin, onSuccess: refresh }),

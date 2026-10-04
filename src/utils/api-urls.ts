@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from "@/config/constants";
 import type { AuthUser, SignInInput, SignUpRequest } from "@/schemas/auth";
+import type { GroupCardData, GroupDetail, GroupInput } from "@/schemas/groups";
 import type { MatchesResponse, RequestSummary } from "@/schemas/matching";
 import type { OnboardingInput, Profile, ProfileInput, SkillOption, StudyRequestInput } from "@/schemas/profile";
 import { axiosClient } from "./axios-client";
@@ -54,8 +55,25 @@ export const matchesApi = {
 };
 
 export const groupsApi = {
+  list: (signal?: AbortSignal) =>
+    axiosClient.get<{ groups: GroupCardData[] }>(API_ENDPOINTS.groups, { signal }).then((res) => res.data.groups),
+  get: (id: string, signal?: AbortSignal) =>
+    axiosClient.get<{ group: GroupDetail }>(API_ENDPOINTS.group(id), { signal }).then((res) => res.data.group),
+  create: (input: GroupInput) =>
+    axiosClient.post<{ id: string }>(API_ENDPOINTS.groups, input).then((res) => res.data.id),
+  update: ({ id, input }: { id: string; input: GroupInput }) =>
+    axiosClient.patch<{ group: GroupDetail }>(API_ENDPOINTS.group(id), input).then((res) => res.data.group),
+  remove: (id: string) => axiosClient.delete<{ ok: true }>(API_ENDPOINTS.group(id)).then((res) => res.data),
   join: (groupId: string) =>
     axiosClient.post<{ status: "pending" }>(API_ENDPOINTS.groupJoin(groupId)).then((res) => res.data),
   cancelJoin: (groupId: string) =>
     axiosClient.delete<{ status: "none" }>(API_ENDPOINTS.groupJoin(groupId)).then((res) => res.data),
+  leave: (groupId: string) =>
+    axiosClient.post<{ ok: true }>(API_ENDPOINTS.groupLeave(groupId)).then((res) => res.data),
+  decide: ({ groupId, userId, status }: { groupId: string; userId: string; status: "accepted" | "rejected" }) =>
+    axiosClient
+      .patch<{ ok: true }>(API_ENDPOINTS.groupMember(groupId, userId), { status })
+      .then((res) => res.data),
+  removeMember: ({ groupId, userId }: { groupId: string; userId: string }) =>
+    axiosClient.delete<{ ok: true }>(API_ENDPOINTS.groupMember(groupId, userId)).then((res) => res.data),
 };

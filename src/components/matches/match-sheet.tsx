@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckIcon, TriangleAlertIcon } from "lucide-react";
+import { CheckIcon, ExternalLinkIcon, TriangleAlertIcon } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CONFIDENCE_STYLES } from "@/config/constants";
+import { ROUTES } from "@/config/constants";
 import { levelLabel, modeLabel, slotLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { MatchItem, RequestSummary } from "@/schemas/matching";
@@ -101,6 +103,13 @@ export function MatchSheet({
             </SheetHeader>
 
             <div className="flex flex-col gap-7 p-6">
+              <Link
+                href={ROUTES.group(match.group.id)}
+                className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                View the group page
+                <ExternalLinkIcon className="size-4" aria-hidden />
+              </Link>
               {match.group.description && (
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {match.group.description}
