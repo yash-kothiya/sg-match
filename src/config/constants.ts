@@ -14,15 +14,18 @@ export const ROUTES = {
   groups: "/groups",
   group: (id: string) => `/groups/${encodeURIComponent(id)}`,
   matches: "/matches",
+  guide: "/guide",
 } as const;
 
 // Sidebar navigation. `href: null` marks a feature that isn't built yet (shown disabled).
-export const APP_NAV = [
+type NavItem = { key: "dashboard" | "matches" | "groups" | "guide"; title: string; href: string | null };
+
+export const APP_NAV: readonly NavItem[] = [
   { key: "dashboard", title: "Dashboard", href: ROUTES.home },
   { key: "matches", title: "Matches", href: ROUTES.matches },
   { key: "groups", title: "Study groups", href: ROUTES.groups },
-  { key: "guide", title: "Study guide", href: null },
-] as const;
+  { key: "guide", title: "Study guide", href: ROUTES.guide },
+];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 export const API_TIMEOUT_MS = 30_000;
@@ -43,6 +46,9 @@ export const API_ENDPOINTS = {
   request: (id: string) => `/requests/${encodeURIComponent(id)}`,
   matches: "/matches",
   groups: "/groups",
+  chat: "/chat",
+  chatSession: (id: string) => `/chat/sessions/${encodeURIComponent(id)}`,
+  firebaseToken: "/auth/firebase-token",
   group: (id: string) => `/groups/${encodeURIComponent(id)}`,
   groupJoin: (id: string) => `/groups/${encodeURIComponent(id)}/join`,
   groupLeave: (id: string) => `/groups/${encodeURIComponent(id)}/leave`,
@@ -162,3 +168,26 @@ export const MAX_OWNED_GROUPS = 5;
 export const MIN_GROUP_SIZE = 2;
 export const MAX_GROUP_SIZE = 20;
 export const DEFAULT_GROUP_SIZE = 6;
+
+// Study guide (RAG chatbot). See docs/AI_IMPLEMENTATION.md.
+export const EMBEDDING_DIMENSIONS = 768; // must stay <= 2000 so pgvector can index it
+export const RAG_TOP_K = 5;
+export const RAG_MAX_CHUNKS = 4;
+/** Cosine similarity below which we refuse without calling the model. Calibrate with `bun run ai:eval`. */
+export const RAG_MIN_SIMILARITY = 0.55;
+export const CHAT_MAX_MESSAGE_LENGTH = 500;
+export const CHAT_USER_RATE_LIMIT = 5; // messages per minute, per user
+export const CHAT_GLOBAL_RATE_LIMIT = 12; // messages per minute, all users (keeps the free tier safe)
+export const CHAT_TIMEOUT_MS = 15_000;
+export const CHAT_MAX_OUTPUT_TOKENS = 700;
+export const CHAT_HISTORY_TURNS = 6;
+export const CHAT_MAX_MESSAGES_PER_SESSION = 200;
+export const REFUSAL_TEXT = "I couldn't find that in the study guide.";
+export const SUGGESTED_QUESTIONS = [
+  "How is my match score worked out?",
+  "What should we do in our first group meeting?",
+  "How does spaced repetition work?",
+  "What if someone in my group keeps not showing up?",
+  "How do I keep an online study session engaging?",
+  "What should I check before meeting in person?",
+] as const;

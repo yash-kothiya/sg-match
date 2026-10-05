@@ -5,3 +5,4 @@ export * from "./tables/study-groups";
 export * from "./tables/study-requests";
 export * from "./tables/users";
 export * from "./tables/request-matches";
+export * from "./tables/knowledge-base";

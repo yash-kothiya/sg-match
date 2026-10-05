@@ -7,13 +7,15 @@ export class ApiError extends Error {
     public status: number,
     message: string,
     public fieldErrors?: Record<string, string>,
+    /** Machine-readable reason, e.g. "RATE_LIMITED". Lets the UI choose its own wording. */
+    public code?: string,
   ) {
     super(message);
   }
 }
 
 export type ApiErrorBody = {
-  error: { message: string; fieldErrors?: Record<string, string> };
+  error: { message: string; fieldErrors?: Record<string, string>; code?: string };
 };
 
 /** Wraps a route handler so thrown errors become consistent JSON responses. */
@@ -25,7 +27,7 @@ export function handleRoute<Ctx = unknown>(
       return await handler(request, ctx);
     } catch (error) {
       if (error instanceof ApiError) {
-        return errorResponse(error.status, error.message, error.fieldErrors);
+        return errorResponse(error.status, error.message, error.fieldErrors, error.code);
       }
       if (error instanceof ZodError) {
         const fieldErrors: Record<string, string> = {};
@@ -45,8 +47,9 @@ function errorResponse(
   status: number,
   message: string,
   fieldErrors?: Record<string, string>,
+  code?: string,
 ) {
-  const body: ApiErrorBody = { error: { message, fieldErrors } };
+  const body: ApiErrorBody = { error: { message, fieldErrors, code } };
   return Response.json(body, { status });
 }
 

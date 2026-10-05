@@ -1,0 +1,13 @@
+---
+title: How SG Match works
+slug: how-sg-match-works
+---
+
+## Profiles and onboarding
+When you sign up, SG Match asks you to finish a short four-step setup before you can use the app. Step one asks for your school or university and an optional short bio. Step two asks for your experience level (beginner, intermediate or advanced), how you like to study (online, in person or hybrid) and, if you study in person or hybrid, your city or campus. Step three lets you pick skills you already have, such as Python or Statistics. Step four asks when you are usually free, using six time slots (weekday or weekend, morning, afternoon or evening), and which topics you want to study. You can change all of this later on your Profile page, which also shows a profile strength checklist. The more complete your profile, the easier it is to prefill requests and groups.
+
+## Study requests and joining a group
+A study request describes what you want a group for right now, for example "Interview prep for the summer". You choose a subject, level, format, location, skills, free times and topics. The form starts from your profile, so you only need to name the goal and change anything that is different this time. You can keep up to ten requests and delete any of them. To join a group you ask to join; the group's owner then accepts or declines. While you wait, the group shows "Request sent" and you can cancel. Once accepted, you are a member and can leave later. If an owner declines your request, you cannot ask the same group again. A full group cannot accept new people, and you cannot join a group you already own or belong to. You can create your own group, own up to five groups, and set a size between two and twenty people including yourself.
+
+## How matches are scored
+Every group gets a score out of 100 for each of your requests, so the ranking is explainable and repeatable. Skills are worth 35 points: the share of your skills that the group covers. Topics are worth 20 points, based on how much your topics and the group's topics overlap. Availability is worth 15 points: the share of your free time slots the group also meets in. Experience level is worth 10 points: a full score for the same level and half for one level apart. Study format is worth 10 points: a full score for the same format, and hybrid counts as 70 percent compatible with online or in person. Location is worth 10 points and only matters when neither side is online: you must share a city. Scores of 80 or more are an excellent match, 60 or more strong, 40 or more fair, and anything lower weak. Full groups, groups you own and groups you already belong to are never recommended. Each result lists plain-language reasons and caveats, such as "Meets in person, but you prefer online".

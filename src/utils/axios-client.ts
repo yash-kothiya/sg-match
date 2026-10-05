@@ -22,9 +22,9 @@ axiosClient.interceptors.response.use(
 
     if (isAxiosError(error)) {
       if (error.response) {
-        const apiError = (error.response.data as { error?: { message?: string; fieldErrors?: Record<string, string> } } | undefined)?.error;
+        const apiError = (error.response.data as { error?: { message?: string; fieldErrors?: Record<string, string>; code?: string } } | undefined)?.error;
         return Promise.reject(
-          new ApiClientError(error.response.status, apiError?.message ?? DEFAULT_ERROR_MESSAGE, apiError?.fieldErrors),
+          new ApiClientError(error.response.status, apiError?.message ?? DEFAULT_ERROR_MESSAGE, apiError?.fieldErrors, apiError?.code),
         );
       }
       if (error.code === "ECONNABORTED") {

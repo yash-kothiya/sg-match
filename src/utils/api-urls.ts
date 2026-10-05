@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from "@/config/constants";
 import type { AuthUser, SignInInput, SignUpRequest } from "@/schemas/auth";
+import type { ChatResponse } from "@/schemas/chat";
 import type { GroupCardData, GroupDetail, GroupInput } from "@/schemas/groups";
 import type { MatchesResponse, RequestSummary } from "@/schemas/matching";
 import type { OnboardingInput, Profile, ProfileInput, SkillOption, StudyRequestInput } from "@/schemas/profile";
@@ -76,4 +77,19 @@ export const groupsApi = {
       .then((res) => res.data),
   removeMember: ({ groupId, userId }: { groupId: string; userId: string }) =>
     axiosClient.delete<{ ok: true }>(API_ENDPOINTS.groupMember(groupId, userId)).then((res) => res.data),
+};
+
+export type FirebaseClientAccess = {
+  uid: string;
+  token: string;
+  config: { apiKey: string; projectId: string; authDomain: string };
+};
+
+export const chatApi = {
+  ask: (input: { sessionId?: string; message: string }) =>
+    axiosClient.post<ChatResponse>(API_ENDPOINTS.chat, input).then((res) => res.data),
+  deleteSession: (id: string) =>
+    axiosClient.delete<{ ok: true }>(API_ENDPOINTS.chatSession(id)).then((res) => res.data),
+  firebaseAccess: () =>
+    axiosClient.get<FirebaseClientAccess>(API_ENDPOINTS.firebaseToken).then((res) => res.data),
 };

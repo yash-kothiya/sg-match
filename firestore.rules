@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Everything is denied unless a rule below allows it.
+// Chat history is written ONLY by the server (Admin SDK bypasses these rules). Clients may read their own.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid}/chatSessions/{sessionId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /users/{uid}/chatSessions/{sessionId}/messages/{messageId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false; // clients can't forge assistant messages or edit history
+    }
+
+    // Default deny.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

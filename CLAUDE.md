@@ -19,6 +19,8 @@ bun run dev          # next dev
 bun run build        # next build
 bun run lint         # eslint
 bun run test         # bun test
+bun run ai:check     # verify Gemini key/models/dimension (3 small API calls)
+bun run ai:eval      # retrieval evaluation, prints similarities
 docker compose up -d # local Postgres (user/pass postgres/postgres, db sg_match, port 5432)
 bun run db:generate  # drizzle-kit generate (create migration from schema)
 bun run db:migrate   # apply migrations
@@ -27,7 +29,7 @@ bun run db:studio    # drizzle studio
 bun run db:seed <name>  # run src/db/seeder/<name>.ts: skills | users | groups | requests | all | unseed
 ```
 
-Tests: `bun run test` (bun's built-in runner; files named `*.test.ts`, currently `src/lib/matching/score.test.ts`).
+Tests: `bun run test` (bun's built-in runner; files named `*.test.ts`, currently `src/lib/ai/ai.test.ts`; `src/lib/matching/score.test.ts` is missing and should be recreated).
 
 ## Environment
 
@@ -84,6 +86,17 @@ Enums (`src/db/schema/enums/index.ts`): `experience_level`, `study_mode`, `membe
 ## Matching
 
 Pure engine in `src/lib/matching/` (no DB or framework imports): `weights.ts` is the whole model (skills 35, topics 20, availability 15, level 10, mode 10, location 10; weights sum to 100 and a test asserts it), `score.ts` has `scoreGroup`, `isEligible` (drops full groups, the requester's own groups and groups they already belong to) and `rankGroups` (deterministic tie-breaks: score, skills, topics, name, id). Each result carries a score, a confidence band, 2-3 `reasons` and honest `caveats` (e.g. "Meets in person, but you prefer online"). `services/matches.service.ts` loads requests/groups from Postgres and calls the engine; `GET /api/requests` lists the user's own requests, then the shared sample requests (owners with ids starting `usr_seed_`, see `SAMPLE_USER_ID_PREFIX`), `GET /api/matches?requestId=&limit=` returns the ranked groups and the method explainer. Types for responses are in `src/schemas/matching.ts`. The tests run the engine on the real seed data, including the golden case. To change scoring, edit `weights.ts` and the tests, nothing else.
+
+## Study guide (RAG chatbot)
+
+Implements the plan in `docs/AI_IMPLEMENTATION.md` (the revised version: 5 documents x 3 sections). AI is used **only** here; matching never calls an LLM or embeddings.
+- **Knowledge base:** `src/kb/*.md` (5 files, frontmatter `title`/`slug`, one `##` section = one chunk) and `src/kb/eval.json` (questions for `bun run ai:eval`). `bun run db:seed kb` (`db/seeder/kb.ts`) embeds new or changed chunks only (hash = text + model + dimensions), is resumable after a quota hit, and removes stale chunks.
+- **Tables** (`db/schema/tables/knowledge-base.ts`, migration `0004`): `kb_documents`, `kb_chunks` (`vector(768)` + HNSW cosine index), `ai_query_cache`, `ai_usage`. The migration also enables the `vector` extension and **RLS (no policies) on every table**.
+- **Pure code** (`src/lib/ai/`, unit-tested in `ai.test.ts`): `chunker.ts`, `hash.ts`, `prompt.ts` (system instruction, `<context>`/`<question>` delimiters, JSON schema, `parseModelOutput` which rejects invalid JSON and source numbers outside the context). `gemini.ts` is the only file that talks to Gemini (plain REST, no SDK; endpoints/fields may need adjusting to the current docs). `services/gemini.service.ts` wraps it with env config (`GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBEDDING_MODEL`, optional `GEMINI_CHAT_FALLBACK_MODELS` as a comma-separated list tried in order when a model keeps returning 5xx; model ids are never hard-coded). `generateJson` per model: retry once without the thinking setting on a 400, wait 1s and retry once on a 5xx, then move to the next model; quota/key/bad-request errors stop immediately; one overall deadline of 2x `CHAT_TIMEOUT_MS`. Free-tier capacity varies per model minute to minute, so keep a fallback list. `gemini-2.5-flash` is retired for new users.
+- **Answering** (`POST /api/chat`): `requireUser` -> zod (<= 500 chars) -> per-user and global per-minute limits in Postgres (`rate-limit.service.ts`) -> embed the question (cached) -> pgvector top 5 -> if the best cosine similarity is under `RAG_MIN_SIMILARITY` return the refusal with **no model call** -> otherwise one grounded, structured-JSON call; citations are built from the chunks that were sent, never from model text. Failures return typed codes (`RATE_LIMITED`, `QUOTA_EXCEEDED`, `TIMEOUT`, `LLM_UNAVAILABLE`, `KB_EMPTY`) via `ApiError.code` -> `ApiClientError.code`; the user's question is always saved first.
+- **History (Firestore):** the server writes `users/{firebaseUid}/chatSessions/{id}` and `.../messages/{id}` (Admin SDK, `chat-history.service.ts`); the browser reads them live with the client SDK after `GET /api/auth/firebase-token` (custom token), so `firestore.rules` (read own, write never, default deny) are really enforced. Firestore paths use the **Firebase uid**, not our user id (`getFirebaseUid`). If Firestore is unavailable the answer is still returned (`historySaved: false`) and the UI keeps the chat in memory with a notice.
+- **UI:** `/guide` (`components/guide/`, hooks in `hooks/guide/`): conversations panel + chat card (suggested questions, citation chips that expand to the snippet, dashed refusal style, inline typed errors with Try again, 500-char counter, delete via `ConfirmDialog`).
+- **Ops:** Scripts: `bun run ai:check` (verifies key, models, dimension, structured output; 3 small calls), `bun run ai:eval` (prints similarities to calibrate `RAG_MIN_SIMILARITY`). Constants are in `config/constants.ts` (`RAG_*`, `CHAT_*`, `EMBEDDING_DIMENSIONS`).
 
 ## Dashboard
 
