@@ -49,4 +49,6 @@ export type AuthUser = {
   name: string;
   role: "student" | "admin";
   onboarded: boolean;
+  /** Firestore paths and rules are keyed by this, not by `id`. Not secret (the browser signs in to Firebase with it). */
+  firebaseUid: string;
 };

@@ -62,6 +62,9 @@ export function GuidePage() {
   // Used only when Firestore can't save history: keeps the conversation visible in this tab.
   const [local, setLocal] = useState<ChatMessageItem[]>([]);
   const [historyDown, setHistoryDown] = useState(false);
+  // The latest question and answer, shown from the API response until the live Firestore list catches up
+  // (the server saves the answer after responding). `base` is how many stored messages existed when it was asked.
+  const [answered, setAnswered] = useState<{ base: number; items: ChatMessageItem[] } | null>(null);
   const [toDelete, setToDelete] = useState<ChatSessionItem | null>(null);
   const [draft, setDraft] = useState("");
   const [showList, setShowList] = useState(false);
@@ -73,7 +76,8 @@ export function GuidePage() {
   const lastStored = stored.at(-1);
   // The server saves the question before answering, so the live list may already contain it.
   const pendingAlreadyShown = pending !== null && lastStored?.role === "user" && lastStored.text === pending;
-  const messages = [...stored, ...local];
+  const notYetStored = answered ? answered.items.slice(Math.max(0, stored.length - answered.base)) : [];
+  const messages = [...stored, ...notYetStored, ...local];
   const busy = ask.isPending;
 
   useEffect(() => {
@@ -85,22 +89,25 @@ export function GuidePage() {
     if (!text || busy) return;
     setDraft("");
     setFailure(null);
+    setAnswered(null);
     setPending(text);
+    const base = activeId ? stored.length : 0;
     ask.mutate(
       { sessionId: activeId ?? undefined, message: text },
       {
         onSuccess: (response) => {
           setPending(null);
+          const items: ChatMessageItem[] = [
+            { id: `u-${Date.now()}`, role: "user", text, citations: [], grounded: null, error: null },
+            { id: `a-${Date.now()}`, role: "assistant", text: response.answer, citations: response.citations, grounded: response.grounded, error: null },
+          ];
           if (response.historySaved) {
             setHistoryDown(false);
             setActiveId(response.sessionId);
+            setAnswered({ base, items });
           } else {
             setHistoryDown(true);
-            setLocal((current) => [
-              ...current,
-              { id: `u-${Date.now()}`, role: "user", text, citations: [], grounded: null, error: null },
-              { id: `a-${Date.now()}`, role: "assistant", text: response.answer, citations: response.citations, grounded: response.grounded, error: null },
-            ]);
+            setLocal((current) => [...current, ...items]);
           }
         },
         onError: (error) => {
@@ -115,6 +122,7 @@ export function GuidePage() {
   const newChat = () => {
     setActiveId(null);
     setLocal([]);
+    setAnswered(null);
     setPending(null);
     setFailure(null);
     setShowList(false);
@@ -159,6 +167,7 @@ export function GuidePage() {
                     onOpen={() => {
                       setActiveId(session.id);
                       setLocal([]);
+                      setAnswered(null);
                       setFailure(null);
                       setShowList(false);
                     }}

@@ -1,17 +1,20 @@
 import { CHAT_GLOBAL_RATE_LIMIT, CHAT_USER_RATE_LIMIT } from "@/config/constants";
-import { handleRoute, parseJson } from "@/lib/api/errors";
+import { after } from "next/server";
+import { ApiError, handleRoute, parseJson } from "@/lib/api/errors";
 import { chatRequestSchema, type ChatResponse } from "@/schemas/chat";
-import { getFirebaseUid, requireUser } from "@/services/auth.service";
-import { addMessage, assertRoomForMessage, ensureSession, recentQuestions } from "@/services/chat-history.service";
+import { requireUser } from "@/services/auth.service";
+import { recentQuestions, saveAnswer, saveQuestion } from "@/services/chat-history.service";
 import { answerQuestion, ChatError, toChatError } from "@/services/rag.service";
 import { checkChatLimits } from "@/services/rate-limit.service";
 
 const errorResponse = (error: ChatError) =>
   Response.json({ error: { message: error.message, code: error.code } }, { status: error.status });
 
-/** Short follow-ups like "why?" retrieve badly alone, so search with the previous question as well. */
-const retrievalQueryFor = (message: string, previous: string | undefined) =>
-  previous && message.split(/\s+/).length <= 4 ? `${previous} ${message}` : message;
+const isShortFollowUp = (message: string) => message.split(/\s+/).length <= 4;
+
+/** Short follow-ups like "why?" mean nothing alone, so both retrieval and the model get the previous question too. */
+const questionFor = (message: string, previous: string | undefined) =>
+  previous ? `${message} (follow-up to: "${previous}")` : message;
 
 export const POST = handleRoute(async (request) => {
   const user = await requireUser();
@@ -21,45 +24,48 @@ export const POST = handleRoute(async (request) => {
   if (limited === "user") return errorResponse(new ChatError("RATE_LIMITED", 429, "Slow down a little. Try again in a few seconds."));
   if (limited === "global") return errorResponse(new ChatError("RATE_LIMITED", 429, "The study guide is busy right now. Try again in a minute."));
 
-  // History is saved on a best-effort basis: if Firestore isn't reachable the answer is still returned.
-  let uid: string | null = null;
-  let sessionId = requestedSession ?? "";
+  const uid = user.firebaseUid;
+
+  // The only history read the answer waits for: short follow-ups need the previous question to retrieve well.
   let previous: string | undefined;
-  let historySaved = true;
-  try {
-    uid = await getFirebaseUid(user.id);
-    sessionId = await ensureSession(uid, requestedSession, message);
-    await assertRoomForMessage(uid, sessionId);
-    previous = (await recentQuestions(uid, sessionId)).at(-1);
-    await addMessage(uid, sessionId, { role: "user", text: message }); // saved first, so a failure never loses the question
-  } catch (error) {
+  if (requestedSession && isShortFollowUp(message)) {
+    previous = (await recentQuestions(uid, requestedSession).catch(() => [])).at(-1);
+  }
+
+  // Save the question while the answer is worked out. Both settle to values, so neither can reject unhandled.
+  // ponytail: a missing/full conversation is only reported after answering (one wasted model call in that rare case).
+  const [saved, answered] = await Promise.all([
+    saveQuestion(uid, requestedSession, message).then(
+      (sessionId) => ({ sessionId }),
+      (error: unknown) => ({ error }),
+    ),
+    answerQuestion(questionFor(message, previous)).then(
+      (result) => ({ result }),
+      (error: unknown) => ({ error: toChatError(error) }),
+    ),
+  ]);
+
+  // History is best-effort: if Firestore isn't reachable the answer is still returned.
+  let sessionId: string | null = null;
+  if ("error" in saved) {
     // A missing or full conversation is the caller's problem; anything else is just "history unavailable".
-    if (requestedSession && error instanceof Error && "status" in error) throw error;
-    console.error("Chat history unavailable:", error);
-    historySaved = false;
-    uid = null;
+    if (requestedSession && saved.error instanceof ApiError) throw saved.error;
+    console.error("Chat history unavailable:", saved.error);
+  } else {
+    sessionId = saved.sessionId;
   }
 
-  let result;
-  try {
-    result = await answerQuestion(message, retrievalQueryFor(message, previous));
-  } catch (error) {
-    const chatError = toChatError(error);
-    if (uid) {
-      await addMessage(uid, sessionId, { role: "assistant", text: chatError.message, error: chatError.code }).catch(() => undefined);
-    }
-    return errorResponse(chatError);
+  if (sessionId) {
+    const savedSession = sessionId;
+    const reply =
+      "error" in answered
+        ? { text: answered.error.message, error: answered.error.code }
+        : { text: answered.result.answer, citations: answered.result.citations, grounded: answered.result.grounded };
+    // The browser shows the answer from this response, so saving it doesn't need to delay it.
+    after(() => saveAnswer(uid, savedSession, reply).catch((error) => console.error("Saving the answer failed:", error)));
   }
 
-  if (uid) {
-    try {
-      await addMessage(uid, sessionId, { role: "assistant", text: result.answer, citations: result.citations, grounded: result.grounded });
-    } catch (error) {
-      console.error("Saving the answer failed:", error);
-      historySaved = false;
-    }
-  }
-
-  const body: ChatResponse = { sessionId, historySaved, ...result };
+  if ("error" in answered) return errorResponse(answered.error);
+  const body: ChatResponse = { sessionId: sessionId ?? "", historySaved: sessionId !== null, ...answered.result };
   return Response.json(body);
 });

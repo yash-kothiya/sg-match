@@ -19,6 +19,7 @@ export function toAuthUser(user: User): AuthUser {
     name: user.name,
     role: user.role,
     onboarded: user.onboardedAt !== null,
+    firebaseUid: user.firebaseUid,
   };
 }
 
@@ -83,11 +84,4 @@ export async function requireUser(): Promise<AuthUser> {
   const user = await getSessionUser();
   if (!user) throw new ApiError(401, "You must be signed in");
   return user;
-}
-
-/** The Firebase uid for a user. Firestore data and rules are keyed by it, not by our own id. */
-export async function getFirebaseUid(userId: string): Promise<string> {
-  const [row] = await db.select({ uid: users.firebaseUid }).from(users).where(eq(users.id, userId));
-  if (!row) throw new ApiError(404, "User not found");
-  return row.uid;
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { eq, sql } from "drizzle-orm";
+import { after } from "next/server";
 import {
   EMBEDDING_DIMENSIONS,
   RAG_MAX_CHUNKS,
@@ -56,7 +57,8 @@ async function questionEmbedding(question: string): Promise<number[]> {
   if (cached) return cached.embedding;
 
   const embedding = await embedQuestion(question);
-  await db.insert(aiQueryCache).values({ queryHash: hash, embeddingModel: model, embedding }).onConflictDoNothing();
+  // Caching doesn't need to delay the answer.
+  after(() => db.insert(aiQueryCache).values({ queryHash: hash, embeddingModel: model, embedding }).onConflictDoNothing());
   return embedding;
 }
 
@@ -91,10 +93,10 @@ const refusal = (): Answer => ({ answer: REFUSAL_TEXT, grounded: false, citation
  * Retrieves, then (only if something relevant was found) asks the model, and checks its reply.
  * Refusals never reach the model, which keeps quota use down and rules out invented answers.
  */
-export async function answerQuestion(question: string, retrievalQuery = question): Promise<Answer> {
+export async function answerQuestion(question: string): Promise<Answer> {
   let found: Retrieved[];
   try {
-    found = await retrieve(retrievalQuery);
+    found = await retrieve(question);
   } catch (error) {
     throw toChatError(error);
   }

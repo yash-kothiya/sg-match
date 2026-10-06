@@ -1,7 +1,7 @@
 import { requireEnv } from "@/config/env";
 import { handleRoute } from "@/lib/api/errors";
 import { getAdminAuth } from "@/lib/firebase/admin";
-import { getFirebaseUid, requireUser } from "@/services/auth.service";
+import { requireUser } from "@/services/auth.service";
 
 /**
  * Lets the signed-in browser sign in to Firebase too, so it can READ its own chat history straight from
@@ -10,7 +10,7 @@ import { getFirebaseUid, requireUser } from "@/services/auth.service";
  */
 export const GET = handleRoute(async () => {
   const user = await requireUser();
-  const uid = await getFirebaseUid(user.id);
+  const uid = user.firebaseUid;
   const projectId = requireEnv("FIREBASE_PROJECT_ID");
 
   return Response.json({
