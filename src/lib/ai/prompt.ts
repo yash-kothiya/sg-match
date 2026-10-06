@@ -28,12 +28,15 @@ const modelOutputSchema = z.object({
 });
 export type ModelOutput = z.infer<typeof modelOutputSchema>;
 
+/** Escapes angle brackets so text can't close a delimiter and pose as context (e.g. "</question><context>…"). */
+export const escapeDelimiters = (text: string) => text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 /** The user turn: numbered context passages and the question, each inside delimiters so they stay data. */
 export function buildUserTurn(question: string, chunks: ContextChunk[]): string {
   const context = chunks
-    .map((chunk, index) => `[${index + 1}] ${chunk.documentTitle} › ${chunk.heading}\n${chunk.content}`)
+    .map((chunk, index) => `[${index + 1}] ${chunk.documentTitle} › ${chunk.heading}\n${escapeDelimiters(chunk.content)}`)
     .join("\n\n");
-  return `<context>\n${context}\n</context>\n<question>\n${question}\n</question>`;
+  return `<context>\n${context}\n</context>\n<question>\n${escapeDelimiters(question)}\n</question>`;
 }
 
 export class ModelOutputError extends Error {}

@@ -1,28 +1,35 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 import { db } from "@/db";
-import { aiUsage } from "@/db/schema";
 
 const MINUTE_MS = 60_000;
 
 /**
- * Per-user and global per-minute counters (the global cap protects the shared free-tier quota), bumped in one
- * round trip. Counters live in Postgres because serverless instances don't share memory, so an in-memory
- * limiter wouldn't hold.
+ * Per-user and global per-minute counters (the global cap protects the shared free-tier quota), in one round
+ * trip. The global counter only moves when the user is within their own limit, so one user spamming can't use
+ * up everyone's quota. Counters live in Postgres because serverless instances don't share memory.
  */
 export async function checkChatLimits(userId: string, limits: { user: number; global: number }) {
   const minute = Math.floor(Date.now() / MINUTE_MS);
-  const userKey = `user:${userId}:${minute}`;
-  const rows = await db
-    .insert(aiUsage)
-    .values([{ key: userKey, count: 1 }, { key: `global:${minute}`, count: 1 }])
-    .onConflictDoUpdate({ target: aiUsage.key, set: { count: sql`${aiUsage.count} + 1`, updatedAt: sql`now()` } })
-    .returning({ key: aiUsage.key, count: aiUsage.count });
+  const [row] = await db.execute<{ user_count: number; global_count: number | null }>(sql`
+    with u as (
+      insert into ai_usage (key, count) values (${`user:${userId}:${minute}`}, 1)
+      on conflict (key) do update set count = ai_usage.count + 1, updated_at = now()
+      returning count
+    ), g as (
+      insert into ai_usage (key, count) select ${`global:${minute}`}, 1 from u where u.count <= ${limits.user}
+      on conflict (key) do update set count = ai_usage.count + 1, updated_at = now()
+      returning count
+    )
+    select (select count from u) as user_count, (select count from g) as global_count
+  `);
 
-  const userCount = rows.find((row) => row.key === userKey)?.count ?? 0;
-  const globalCount = rows.find((row) => row.key !== userKey)?.count ?? 0;
-  if (userCount > limits.user) return "user" as const;
-  if (globalCount > limits.global) return "global" as const;
+  // Old counters are never read again; clearing them doesn't need to delay the reply.
+  after(() => db.execute(sql`delete from ai_usage where updated_at < now() - interval '1 hour'`));
+
+  if (row.user_count > limits.user) return "user" as const;
+  if ((row.global_count ?? 0) > limits.global) return "global" as const;
   return null;
 }

@@ -7,7 +7,7 @@ A study-group matching app: students post study requests, create study groups, a
 ## Stack
 
 - Next.js 16.3.8 (App Router, `src/app`), React 19, TypeScript (strict), Tailwind CSS v4
-- PostgreSQL 17 + Drizzle ORM (`postgres-js` driver) + drizzle-kit
+- PostgreSQL + pgvector on Supabase (Mumbai, session pooler; `compose.yaml` was removed) + Drizzle ORM (`postgres-js` driver) + drizzle-kit
 - Firebase (auth; `users.firebaseUid` links a user to a Firebase account). No Firebase code exists yet, only env vars.
 - Package manager: **bun** (`bun.lock`). Use `bun add` / `bun run`, not npm/yarn.
 - Path alias: `@/*` → `src/*`
@@ -21,7 +21,6 @@ bun run lint         # eslint
 bun run test         # bun test
 bun run ai:check     # verify Gemini key/models/dimension (3 small API calls)
 bun run ai:eval      # retrieval evaluation, prints similarities
-docker compose up -d # local Postgres (user/pass postgres/postgres, db sg_match, port 5432)
 bun run db:generate  # drizzle-kit generate (create migration from schema)
 bun run db:migrate   # apply migrations
 bun run db:push      # push schema directly (dev only)
@@ -93,8 +92,8 @@ Implements the plan in `docs/AI_IMPLEMENTATION.md` (the revised version: 5 docum
 - **Knowledge base:** `src/kb/*.md` (5 files, frontmatter `title`/`slug`, one `##` section = one chunk) and `src/kb/eval.json` (questions for `bun run ai:eval`). `bun run db:seed kb` (`db/seeder/kb.ts`) embeds new or changed chunks only (hash = text + model + dimensions), is resumable after a quota hit, and removes stale chunks.
 - **Tables** (`db/schema/tables/knowledge-base.ts`, migration `0004`): `kb_documents`, `kb_chunks` (`vector(768)` + HNSW cosine index), `ai_query_cache`, `ai_usage`. The migration also enables the `vector` extension and **RLS (no policies) on every table**.
 - **Pure code** (`src/lib/ai/`, unit-tested in `ai.test.ts`): `chunker.ts`, `hash.ts`, `prompt.ts` (system instruction, `<context>`/`<question>` delimiters, JSON schema, `parseModelOutput` which rejects invalid JSON and source numbers outside the context). `gemini.ts` is the only file that talks to Gemini (plain REST, no SDK; endpoints/fields may need adjusting to the current docs). `services/gemini.service.ts` wraps it with env config (`GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBEDDING_MODEL`, optional `GEMINI_CHAT_FALLBACK_MODELS` as a comma-separated list tried in order when a model keeps returning 5xx; model ids are never hard-coded). `generateJson` per model: retry once without the thinking setting on a 400, wait 1s and retry once on a 5xx, then move to the next model; quota/key/bad-request errors stop immediately; one overall deadline of 2x `CHAT_TIMEOUT_MS`. Free-tier capacity varies per model minute to minute, so keep a fallback list. `gemini-2.5-flash` is retired for new users.
-- **Answering** (`POST /api/chat`): `requireUser` -> zod (<= 500 chars) -> per-user and global per-minute limits in Postgres (`rate-limit.service.ts`) -> embed the question (cached) -> pgvector top 5 -> if the best cosine similarity is under `RAG_MIN_SIMILARITY` return the refusal with **no model call** -> otherwise one grounded, structured-JSON call; citations are built from the chunks that were sent, never from model text. Failures return typed codes (`RATE_LIMITED`, `QUOTA_EXCEEDED`, `TIMEOUT`, `LLM_UNAVAILABLE`, `KB_EMPTY`) via `ApiError.code` -> `ApiClientError.code`; the user's question is always saved first.
-- **History (Firestore):** the server writes `users/{firebaseUid}/chatSessions/{id}` and `.../messages/{id}` (Admin SDK, `chat-history.service.ts`); the browser reads them live with the client SDK after `GET /api/auth/firebase-token` (custom token), so `firestore.rules` (read own, write never, default deny) are really enforced. Firestore paths use the **Firebase uid**, not our user id (`getFirebaseUid`). If Firestore is unavailable the answer is still returned (`historySaved: false`) and the UI keeps the chat in memory with a notice.
+- **Answering** (`POST /api/chat`): `requireUser` -> zod (<= 500 chars) -> per-user and global per-minute limits in Postgres (`rate-limit.service.ts`) -> embed the question (cached) -> pgvector top 5 -> if the best cosine similarity is under `RAG_MIN_SIMILARITY` return the refusal with **no model call** -> otherwise one grounded, structured-JSON call; citations are built from the chunks that were sent, never from model text. Failures return typed codes (`RATE_LIMITED`, `QUOTA_EXCEEDED`, `TIMEOUT`, `LLM_UNAVAILABLE`, `KB_EMPTY`) via `ApiError.code` -> `ApiClientError.code`; the user's question is always saved. **Speed:** the question is saved to Firestore (one batched write) in parallel with answering, and the answer is saved with `after()` once the response is sent; the UI shows the answer from the response until Firestore catches up. Keep Firestore and other non-essential work off the critical path. Short follow-ups (≤ 4 words) get the previous question appended for retrieval and the model. `RAG_MIN_SIMILARITY` (0.60) is calibrated; see the comment in `constants.ts` and the README before changing it. The question and context are delimiter-escaped (`escapeDelimiters`).
+- **History (Firestore):** the server writes `users/{firebaseUid}/chatSessions/{id}` and `.../messages/{id}` (Admin SDK, `chat-history.service.ts`); the browser reads them live with the client SDK after `GET /api/auth/firebase-token` (custom token), so `firestore.rules` (read own, write never, default deny) are really enforced. Firestore paths use the **Firebase uid**, not our user id (`AuthUser.firebaseUid`, from the session). If Firestore is unavailable the answer is still returned (`historySaved: false`) and the UI keeps the chat in memory with a notice.
 - **UI:** `/guide` (`components/guide/`, hooks in `hooks/guide/`): conversations panel + chat card (suggested questions, citation chips that expand to the snippet, dashed refusal style, inline typed errors with Try again, 500-char counter, delete via `ConfirmDialog`).
 - **Ops:** Scripts: `bun run ai:check` (verifies key, models, dimension, structured output; 3 small calls), `bun run ai:eval` (prints similarities to calibrate `RAG_MIN_SIMILARITY`). Constants are in `config/constants.ts` (`RAG_*`, `CHAT_*`, `EMBEDDING_DIMENSIONS`).
 
@@ -165,5 +164,4 @@ shadcn/ui (style `radix-nova`, Radix primitives, lucide icons) on Tailwind v4. C
 
 ## Known issues
 
-- [README.md](README.md) describes the older layout (`drizzle/`, `src/db/schema.ts`) and references `.env.example`, which doesn't exist yet.
 - Google sign-in is not implemented (would need the Firebase client SDK).

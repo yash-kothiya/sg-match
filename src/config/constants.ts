@@ -173,8 +173,13 @@ export const DEFAULT_GROUP_SIZE = 6;
 export const EMBEDDING_DIMENSIONS = 768; // must stay <= 2000 so pgvector can index it
 export const RAG_TOP_K = 5;
 export const RAG_MAX_CHUNKS = 4;
-/** Cosine similarity below which we refuse without calling the model. Calibrate with `bun run ai:eval`. */
-export const RAG_MIN_SIMILARITY = 0.55;
+/**
+ * Cosine similarity below which we refuse without calling the model. Calibrated with `bun run ai:eval`
+ * (gemini-embedding-001, 768 dims): answerable 0.655-0.814, off-topic 0.466-0.547, adversarial 0.548-0.607.
+ * Not the 0.63 midpoint: casual real phrasing scores lower ("can i change my skills later" = 0.618).
+ * Adversarial prompts that pass still meet the model's grounding rules. Re-run the eval if the KB or model changes.
+ */
+export const RAG_MIN_SIMILARITY = 0.6;
 export const CHAT_MAX_MESSAGE_LENGTH = 500;
 export const CHAT_USER_RATE_LIMIT = 5; // messages per minute, per user
 export const CHAT_GLOBAL_RATE_LIMIT = 12; // messages per minute, all users (keeps the free tier safe)
