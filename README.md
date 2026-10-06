@@ -2,7 +2,7 @@
 
 A study-group matching app. Students describe what they want to study, get a ranked list of study groups with a transparent, explainable score, create and join groups, and ask a study guide chatbot (RAG) that answers only from a small knowledge base, with citations.
 
-- **Live app:** _TODO: add URL_
+- **Live app:** https://sg-match.vercel.app/
 - **Reviewer access:** see [Test account / reviewer access](#test-account--reviewer-access)
 
 ---
@@ -101,7 +101,7 @@ Main pages: `/` dashboard, `/matches` (requests and ranked groups), `/groups` an
 | Auth | **Firebase Authentication** (email/password) | Server-side session cookies via `firebase-admin` |
 | Chat history | **Cloud Firestore** | Written by the server (Admin SDK), read by the browser under `firestore.rules` |
 | LLM + embeddings | **Google Gemini API** | Chat `gemini-3.1-flash-lite`, embeddings `gemini-embedding-001` (768 dimensions); model ids are configurable |
-| Hosting | _TODO: add hosting platform and region_ | Host the app in the same region as the database for best latency |
+| Hosting | **Vercel** | Host the app in the same region as the database for best latency |
 | Tooling | Bun (package manager, scripts, test runner), ESLint | |
 
 ---
@@ -214,13 +214,14 @@ The threshold is **0.60** rather than the 0.63 midpoint, because casual real que
 
 ## Test account / reviewer access
 
-- **App URL:** _TODO: add URL_
-- **Test account email:** _TODO_
-- **Test account password:** _TODO (share privately rather than committing it to a public repo)_
+- **App URL:** https://sg-match.vercel.app/
+- **Test account name:** Alex Morgan
+- **Test account email:** alex@sgmatch.com
+- **Test account password:** Alex@123
 
-_TODO: notes for reviewers, for example which pages to try first._
+Reviewers can explore the profile and study requests, compare ranked matches, create a study group, and try the study guide on `/guide`. To test both sides of the group join flow (requesting and accepting/declining), use a second account: the seeded sample users are fictional and cannot sign in, so requests to seeded groups stay pending.
 
-The 12 seeded sample users are fictional and can't sign in. Requests to join seeded groups stay pending because their owners are fictional; to try accepting and declining, create a group with one account and request to join it from another.
+The test account is for reviewer access only; do not use it for personal data.
 
 ---
 
